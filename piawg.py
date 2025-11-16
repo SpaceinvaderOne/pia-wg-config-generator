@@ -6,8 +6,13 @@ import subprocess
 import urllib.parse
 
 # PIA uses the CN attribute for certificates they issue themselves.
-# This will be deprecated by urllib3 at some point in the future, and generates a warning (that we ignore).
-urllib3.disable_warnings(urllib3.exceptions.SubjectAltNameWarning)
+# In newer versions of urllib3, SubjectAltNameWarning was removed, so we disable all warnings
+# or specifically NotOpenSSLWarning if it exists
+try:
+    urllib3.disable_warnings(urllib3.exceptions.SubjectAltNameWarning)
+except AttributeError:
+    # SubjectAltNameWarning doesn't exist in urllib3 2.x, use general warning suppression
+    urllib3.disable_warnings()
 
 
 class piawg:

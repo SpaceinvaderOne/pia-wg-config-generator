@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIA WireGuard Config Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+</head>
+<body class="dark-mode">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Top Header with Controls -->
+    <div class="top-header">
+        <div class="header-controls">
+            <a href="#" class="control-btn" id="donateBtn" title="Support Development">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+            </a>
+            <button class="control-btn" id="themeToggle" title="Toggle Dark/Light Mode">
+                <svg id="lightIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="display: none;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <svg id="darkIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Logo Section -->
+    <div class="logo-container">
+        <img src="/static/sio.png" alt="SIO" class="logo">
+    </div>
+
+    <div class="container main-container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="text-center mb-0">PIA WireGuard Config Generator</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="configForm">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">PIA Username</label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="password" class="form-label">PIA Password</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="region" class="form-label">Region</label>
+                                <select class="form-control" id="region" name="region" required>
+                                    <option value="">Loading regions...</option>
+                                </select>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary" id="generateBtn">
+                                    <span id="btnText">Generate Config</span>
+                                    <span id="spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                </button>
+                            </div>
+                        </form>
+
+                        <p class="text-center mt-3 mb-0" style="font-size: 0.9rem;">
+                            <a href="https://www.youtube.com/c/SpaceinvaderOne" target="_blank" class="text-decoration-none" style="opacity: 0.8;">
+                                Learn how to use this with Unraid Docker containers →
+                            </a>
+                        </p>
+
+                        <!-- Help Section -->
+                        <div class="help-section mt-4 p-3" style="border-radius: 8px; background-color: var(--help-bg); border: 1px solid var(--help-border);">
+                            <p class="mb-2" style="font-size: 0.9rem; line-height: 1.5;">
+                                If your chosen region doesn't connect after import, the server may be temporarily busy. Try waiting a few minutes or generate a config for a different region.
+                                <a class="text-decoration-none" data-bs-toggle="collapse" href="#helpDetails" role="button" aria-expanded="false" aria-controls="helpDetails" style="white-space: nowrap;">
+                                    [More details <span id="helpArrow">▼</span>]
+                                </a>
+                            </p>
+                            <div class="collapse" id="helpDetails">
+                                <hr style="margin: 0.75rem 0; opacity: 0.3;">
+                                <div style="font-size: 0.85rem; line-height: 1.6;">
+                                    <p class="mb-2"><strong>About PIA Server Availability</strong></p>
+                                    <p class="mb-2">PIA VPN servers occasionally experience high load or undergo maintenance. This is normal and doesn't mean your config file is invalid. The config generation always succeeds - connection issues happen when your WireGuard client attempts to connect to the server.</p>
+                                    <p class="mb-2"><strong>What to try:</strong></p>
+                                    <ul class="mb-2" style="padding-left: 1.5rem;">
+                                        <li>Wait 5-10 minutes and try the same region again</li>
+                                        <li>Generate a config for a different region (US East is typically reliable)</li>
+                                        <li>Check if other regions in the same country are available</li>
+                                    </ul>
+                                    <p class="mb-0"><strong>Connection Maintenance:</strong> Once connected, the PersistentKeepalive setting (25 seconds) maintains your connection reliably, even through brief network interruptions.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="error" class="alert alert-danger mt-3 d-none"></div>
+                        <div id="success" class="alert alert-success mt-3 d-none"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('themeToggle');
+        const lightIcon = document.getElementById('lightIcon');
+        const darkIcon = document.getElementById('darkIcon');
+        const body = document.body;
+
+        // Load saved theme or default to dark
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        if (savedTheme === 'dark') {
+            body.classList.remove('light-mode');
+            body.classList.add('dark-mode');
+            lightIcon.style.display = 'none';
+            darkIcon.style.display = 'block';
+        } else {
+            body.classList.remove('dark-mode');
+            body.classList.add('light-mode');
+            lightIcon.style.display = 'block';
+            darkIcon.style.display = 'none';
+        }
+
+        themeToggle.addEventListener('click', function() {
+            if (body.classList.contains('light-mode')) {
+                body.classList.remove('light-mode');
+                body.classList.add('dark-mode');
+                lightIcon.style.display = 'none';
+                darkIcon.style.display = 'block';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.classList.remove('dark-mode');
+                body.classList.add('light-mode');
+                lightIcon.style.display = 'block';
+                darkIcon.style.display = 'none';
+                localStorage.setItem('theme', 'light');
+            }
+        });
+
+        // Donation button
+        document.getElementById('donateBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            window.open('https://www.paypal.com/donate/?hosted_button_id=PRQ23Y8DHEF2C', '_blank');
+        });
+
+        // Help section collapse/expand arrow rotation
+        const helpDetails = document.getElementById('helpDetails');
+        const helpArrow = document.getElementById('helpArrow');
+        if (helpDetails && helpArrow) {
+            helpDetails.addEventListener('show.bs.collapse', function() {
+                helpArrow.textContent = '▲';
+            });
+            helpDetails.addEventListener('hide.bs.collapse', function() {
+                helpArrow.textContent = '▼';
+            });
+        }
+
+        // Load regions on page load
+        fetch('/regions')
+            .then(response => response.json())
+            .then(regions => {
+                const select = document.getElementById('region');
+                select.innerHTML = '<option value="">Select a region...</option>';
+                regions.forEach(region => {
+                    const option = document.createElement('option');
+                    option.value = region;
+                    option.textContent = region;
+                    select.appendChild(option);
+                });
+            })
+            .catch(error => {
+                document.getElementById('region').innerHTML = '<option value="">Error loading regions</option>';
+            });
+
+        // Handle form submission
+        document.getElementById('configForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('generateBtn');
+            const btnText = document.getElementById('btnText');
+            const spinner = document.getElementById('spinner');
+            const errorDiv = document.getElementById('error');
+            const successDiv = document.getElementById('success');
+            
+            // Reset alerts
+            errorDiv.classList.add('d-none');
+            successDiv.classList.add('d-none');
+            
+            // Show loading state
+            btn.disabled = true;
+            btnText.textContent = 'Generating...';
+            spinner.classList.remove('d-none');
+            
+            const formData = new FormData(this);
+            
+            fetch('/generate', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Extract filename from Content-Disposition header
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    const filenameMatch = contentDisposition && contentDisposition.match(/filename="?(.+?)"?$/);
+                    const filename = filenameMatch ? filenameMatch[1] : 'PIA-wg.conf';
+
+                    // Return both blob and filename
+                    return response.blob().then(blob => ({ blob, filename }));
+                } else {
+                    return response.json().then(data => Promise.reject(data.error));
+                }
+            })
+            .then(({ blob, filename }) => {
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                successDiv.textContent = 'Config generated and downloaded successfully!';
+                successDiv.classList.remove('d-none');
+            })
+            .catch(error => {
+                errorDiv.textContent = error || 'An error occurred while generating the config';
+                errorDiv.classList.remove('d-none');
+            })
+            .finally(() => {
+                // Reset button state
+                btn.disabled = false;
+                btnText.textContent = 'Generate Config';
+                spinner.classList.add('d-none');
+            });
+        });
+    </script>
+</body>
+</html>

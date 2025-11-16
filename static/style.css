@@ -1,0 +1,145 @@
+/* Custom styles for SIO branding */
+.top-header {
+    background-color: #1a1a1a;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.logo-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    padding: 20px 0;
+}
+
+.logo {
+    width: 120px;
+    height: auto;
+    border-radius: 12px;
+}
+
+.header-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.control-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.9);
+    transform: translateY(-1px);
+}
+
+.control-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Dark mode styles */
+body.dark-mode {
+    background-color: #121212;
+    color: #ffffff;
+    --help-bg: rgba(255, 255, 255, 0.05);
+    --help-border: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .card {
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+}
+
+body.dark-mode .card-header {
+    background-color: #2d2d2d;
+    border-bottom: 1px solid #333;
+    color: #ffffff;
+}
+
+body.dark-mode .form-control {
+    background-color: #2d2d2d;
+    border: 1px solid #444;
+    color: #ffffff;
+}
+
+body.dark-mode .form-control:focus {
+    background-color: #2d2d2d;
+    border-color: #689f38;
+    color: #ffffff;
+    box-shadow: 0 0 0 0.2rem rgba(104, 159, 56, 0.25);
+}
+
+body.dark-mode .form-label {
+    color: #ffffff;
+}
+
+body.dark-mode .btn-primary {
+    background-color: #689f38;
+    border-color: #689f38;
+}
+
+body.dark-mode .btn-primary:hover {
+    background-color: #558b2f;
+    border-color: #558b2f;
+}
+
+body.dark-mode a {
+    color: #7cb342;
+}
+
+body.dark-mode a:hover {
+    color: #8bc34a;
+}
+
+/* Light mode (default) adjustments */
+body.light-mode {
+    background-color: #f8f9fa;
+    color: #212529;
+    --help-bg: rgba(104, 159, 56, 0.05);
+    --help-border: rgba(104, 159, 56, 0.15);
+}
+
+body.light-mode .btn-primary {
+    background-color: #689f38;
+    border-color: #689f38;
+}
+
+body.light-mode .btn-primary:hover {
+    background-color: #558b2f;
+    border-color: #558b2f;
+}
+
+body.light-mode .form-control:focus {
+    border-color: #689f38;
+    box-shadow: 0 0 0 0.2rem rgba(104, 159, 56, 0.25);
+}
+
+body.light-mode a {
+    color: #558b2f;
+}
+
+body.light-mode a:hover {
+    color: #689f38;
+}
+
+/* Main container adjustments */
+.main-container {
+    min-height: calc(100vh - 70px);
+    padding-top: 20px;
+}

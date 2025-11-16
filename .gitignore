@@ -171,4 +171,7 @@ cython_debug/
 PIA-*
 *.conf
 
+# macOS
+.DS_Store
+
 
