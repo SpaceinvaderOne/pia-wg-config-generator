@@ -67,7 +67,7 @@ This selective routing provides better performance and flexibility compared to s
 ## Requirements
 
 - Docker or Unraid server
-- [Private Internet Access](PLACEHOLDER) subscription (affiliate link)
+- [Private Internet Access](https://www.privateinternetaccess.com/pages/buy-vpn/spaceinvaderone) subscription (affiliate link)
 
 ## Video Tutorial
 
