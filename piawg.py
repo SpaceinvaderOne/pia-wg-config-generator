@@ -5,14 +5,8 @@ import urllib3
 import subprocess
 import urllib.parse
 
-# PIA uses the CN attribute for certificates they issue themselves.
-# In newer versions of urllib3, SubjectAltNameWarning was removed, so we disable all warnings
-# or specifically NotOpenSSLWarning if it exists
-try:
-    urllib3.disable_warnings(urllib3.exceptions.SubjectAltNameWarning)
-except AttributeError:
-    # SubjectAltNameWarning doesn't exist in urllib3 2.x, use general warning suppression
-    urllib3.disable_warnings()
+# Suppress warning (still needed for WG endpoint cert handling)
+urllib3.disable_warnings(urllib3.exceptions.SubjectAltNameWarning)
 
 
 class piawg:
@@ -26,9 +20,7 @@ class piawg:
         self.connection = None
 
     def get_server_list(self):
-        # Use newest version of PIA serverlist ("v6" as of 20221202)
-        r = requests.get('https://serverlist.piaservers.net/vpninfo/servers/v6')
-        # Only process first line of response, there's some base64 data at the end we're ignoring
+        r = requests.get('https://serverlist.piaservers.net/vpninfo/servers/v4')
         data = json.loads(r.text.splitlines()[0])
         for server in data['regions']:
             self.server_list[server['name']] = server
@@ -36,33 +28,57 @@ class piawg:
     def set_region(self, region_name):
         self.region = region_name
 
-    def get_token(self, username, password):
-        # Get common name and IP address for metadata endpoint in region
-        meta_cn = self.server_list[self.region]['servers']['meta'][0]['cn']
-        meta_ip = self.server_list[self.region]['servers']['meta'][0]['ip']
+    # ✅ UPDATED FUNCTION
+    def get_token(self, username, password, verbose=False):
+        token_url = "https://www.privateinternetaccess.com/api/client/v2/token"
 
-        # Some tricks to verify PIA certificate, even though we're sending requests to an IP and not a proper domain
-        # https://toolbelt.readthedocs.io/en/latest/adapters.html#requests_toolbelt.adapters.host_header_ssl.HostHeaderSSLAdapter
-        s = requests.Session()
-        s.mount('https://', host_header_ssl.HostHeaderSSLAdapter())
-        s.verify = 'ca.rsa.4096.crt'
+        if verbose:
+            print("Requesting token from central PIA API")
 
-        r = s.get("https://{}/authv3/generateToken".format(meta_ip), headers={"Host": meta_cn},
-                  auth=(username, password))
-        data = r.json()
-        if r.status_code == 200 and data['status'] == 'OK':
-            self.token = data['token']
-            return True
-        else:
-            return False
+        try:
+            r = requests.post(
+                token_url,
+                data={
+                    "username": username,
+                    "password": password
+                }
+            )
+        except requests.RequestException as e:
+            raise Exception(f"Error requesting token from PIA API: {e}")
+
+        if r.status_code != 200:
+            raise Exception(f"Token request failed with status {r.status_code}: {r.text}")
+
+        try:
+            data = r.json()
+        except json.JSONDecodeError:
+            raise Exception("Error decoding token response")
+
+        token = data.get("token")
+        if not token:
+            raise Exception("Received empty token from PIA API")
+
+        if verbose:
+            print(f"Got token: {token}")
+
+        self.token = token
+        return True
 
     def generate_keys(self):
-        self.privatekey = subprocess.run(['wg', 'genkey'], stdout=subprocess.PIPE, encoding="utf-8").stdout.strip()
-        self.publickey = subprocess.run(['wg', 'pubkey'], input=self.privatekey, stdout=subprocess.PIPE,
-                                        encoding="utf-8").stdout.strip()
+        self.privatekey = subprocess.run(
+            ['wg', 'genkey'],
+            stdout=subprocess.PIPE,
+            encoding="utf-8"
+        ).stdout.strip()
+
+        self.publickey = subprocess.run(
+            ['wg', 'pubkey'],
+            input=self.privatekey,
+            stdout=subprocess.PIPE,
+            encoding="utf-8"
+        ).stdout.strip()
 
     def addkey(self):
-        # Get common name and IP address for wireguard endpoint in region
         cn = self.server_list[self.region]['servers']['wg'][0]['cn']
         ip = self.server_list[self.region]['servers']['wg'][0]['ip']
 
@@ -70,8 +86,14 @@ class piawg:
         s.mount('https://', host_header_ssl.HostHeaderSSLAdapter())
         s.verify = 'ca.rsa.4096.crt'
 
-        r = s.get("https://{}:1337/addKey?pt={}&pubkey={}".format(ip, urllib.parse.quote(self.token),
-                                                                  urllib.parse.quote(self.publickey)), headers={"Host": cn})
+        url = "https://{}:1337/addKey?pt={}&pubkey={}".format(
+            ip,
+            urllib.parse.quote(self.token),
+            urllib.parse.quote(self.publickey)
+        )
+
+        r = s.get(url, headers={"Host": cn})
+
         if r.status_code == 200 and r.json()['status'] == 'OK':
             self.connection = r.json()
             return True, r.content
