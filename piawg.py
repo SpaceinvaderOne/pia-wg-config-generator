@@ -20,7 +20,7 @@ class piawg:
         self.connection = None
 
     def get_server_list(self):
-        r = requests.get('https://serverlist.piaservers.net/vpninfo/servers/v4')
+        r = requests.get('https://serverlist.piaservers.net/vpninfo/servers/v7')
         data = json.loads(r.text.splitlines()[0])
         for server in data['regions']:
             self.server_list[server['name']] = server
