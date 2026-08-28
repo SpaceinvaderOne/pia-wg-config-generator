@@ -6,7 +6,7 @@ import subprocess
 import urllib.parse
 
 # Suppress warning (still needed for WG endpoint cert handling)
-urllib3.disable_warnings(urllib3.exceptions.SubjectAltNameWarning)
+urllib3.disable_warnings()
 
 
 class piawg:
