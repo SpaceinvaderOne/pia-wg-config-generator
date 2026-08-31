@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, send_file, jsonify
 import tempfile
 import os
 import logging
-from piawg import piawg
+from piawg import piawg, PIAError
 from datetime import datetime
 
 # Configure logging
@@ -49,6 +49,9 @@ def get_regions():
         regions.sort()
         logger.info(f"Retrieved {len(regions)} available regions")
         return jsonify(regions)
+    except PIAError as e:
+        logger.error(f"Failed to retrieve regions: {str(e)}")
+        return jsonify({'error': str(e)}), 502
     except Exception as e:
         logger.error(f"Failed to retrieve regions: {str(e)}")
         return jsonify({'error': str(e)}), 500
@@ -82,8 +85,15 @@ def generate_config():
         # Set region
         pia.set_region(region)
 
-        # Get token
-        if not pia.get_token(username, password):
+        # Get token. A rejected password is a 401, while PIA being unreachable
+        # is a 502, so the user can tell the two apart.
+        try:
+            authenticated = pia.get_token(username, password)
+        except PIAError as e:
+            logger.error(f"Could not authenticate with PIA: {str(e)}")
+            return jsonify({'error': str(e)}), 502
+
+        if not authenticated:
             logger.warning(f"Authentication failed for user: {username}")
             return jsonify({'error': 'Invalid credentials or authentication failed'}), 401
 
@@ -91,18 +101,22 @@ def generate_config():
         status, response = pia.addkey()
         if not status:
             logger.error(f"Failed to register key with server for region: {region}")
-            return jsonify({'error': 'Failed to register key with server'}), 500
-        
+            return jsonify({'error': f'Failed to register key with any server in {region}'}), 502
+
         # Generate dynamic filename based on region
         sanitized_region = sanitize_region_for_filename(region)
         tunnel_name = f'PIA-{sanitized_region}'
+
+        # PIA normally returns two resolvers, but use whatever is actually
+        # there rather than assuming both are present.
+        dns_servers = pia.connection.get('dns_servers') or []
+        dns_line = f"DNS = {','.join(dns_servers[:2])}\n" if dns_servers else ""
 
         # Generate config content
         config_content = f"""[Interface]
 Address = {pia.connection['peer_ip']}
 PrivateKey = {pia.privatekey}
-DNS = {pia.connection['dns_servers'][0]},{pia.connection['dns_servers'][1]}
-
+{dns_line}
 # Uncomment the below two PostUp and PreDown routing rules if routing containers through WireGuard container
 # PostUp = iptables -t nat -A POSTROUTING -o wg+ -j MASQUERADE
 # PreDown = iptables -t nat -D POSTROUTING -o wg+ -j MASQUERADE
@@ -144,6 +158,11 @@ PersistentKeepalive = 25
                 logger.error(f"Failed to cleanup temp file {temp_file}: {str(e)}")
 
         return response
+
+    except PIAError as e:
+        # Raised while reaching PIA itself, so nothing has been written yet.
+        logger.error(f"Error generating config: {str(e)}")
+        return jsonify({'error': str(e)}), 502
 
     except Exception as e:
         logger.error(f"Error generating config: {str(e)}")

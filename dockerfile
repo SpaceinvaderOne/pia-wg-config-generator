@@ -1,3 +1,5 @@
+# Pinned to 3.11: Python 3.13 onwards verifies certificates in strict mode,
+# which rejects PIA's CA and breaks key registration for every region.
 FROM python:3.11-slim
 
 WORKDIR /app
