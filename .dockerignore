@@ -1,0 +1,15 @@
+# Keep the image to what the application actually needs. The venv entry
+# matters most: the image builds its own, and copying a local one over the
+# top would replace it with a host-built environment.
+venv/
+__pycache__/
+*.pyc
+
+.git
+.gitignore
+.claude
+.DS_Store
+
+CLAUDE.md
+README.md
+PIA-WG-Config-Generator.png

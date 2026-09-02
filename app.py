@@ -3,7 +3,6 @@ import tempfile
 import os
 import logging
 from piawg import piawg, PIAError
-from datetime import datetime
 
 # Configure logging
 logging.basicConfig(
