@@ -143,3 +143,170 @@ body.light-mode a:hover {
     min-height: calc(100vh - 70px);
     padding-top: 20px;
 }
+
+/* Region picker */
+body.dark-mode {
+    --rp-bg: #2d2d2d;
+    --rp-panel-bg: #242424;
+    --rp-border: #444;
+    --rp-hover: rgba(255, 255, 255, 0.06);
+    --rp-text: rgba(255, 255, 255, 0.82);
+    --rp-heading: rgba(255, 255, 255, 0.92);
+    --rp-muted: rgba(255, 255, 255, 0.42);
+}
+
+body.light-mode {
+    --rp-bg: #ffffff;
+    --rp-panel-bg: #ffffff;
+    --rp-border: #ced4da;
+    --rp-hover: rgba(0, 0, 0, 0.04);
+    --rp-text: #343a40;
+    --rp-heading: #212529;
+    --rp-muted: #868e96;
+}
+
+.region-picker {
+    position: relative;
+}
+
+.region-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0.375rem 0.75rem;
+    min-height: 38px;
+    background-color: var(--rp-bg);
+    border: 1px solid var(--rp-border);
+    border-radius: 0.375rem;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.region-toggle:focus {
+    outline: none;
+    border-color: #689f38;
+    box-shadow: 0 0 0 0.2rem rgba(104, 159, 56, 0.25);
+}
+
+.region-toggle.is-placeholder {
+    color: var(--rp-muted);
+}
+
+.region-caret {
+    transition: transform 0.2s ease;
+    color: var(--rp-muted);
+}
+
+.region-picker.is-open .region-caret {
+    transform: rotate(180deg);
+}
+
+.region-panel {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background-color: var(--rp-panel-bg);
+    border: 1px solid var(--rp-border);
+    border-radius: 0.375rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+}
+
+.region-filter {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border: none;
+    border-bottom: 1px solid var(--rp-border);
+    background-color: transparent;
+    color: var(--rp-heading);
+}
+
+.region-filter:focus {
+    outline: none;
+}
+
+.region-groups {
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.region-group-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0.55rem 0.75rem;
+    background: none;
+    border: none;
+    border-top: 1px solid var(--rp-border);
+    color: var(--rp-heading);
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.region-groups > .region-group:first-child .region-group-header {
+    border-top: none;
+}
+
+.region-group-header:hover {
+    background-color: var(--rp-hover);
+}
+
+.region-group-chevron {
+    transition: transform 0.2s ease;
+    color: var(--rp-muted);
+    font-size: 0.8em;
+}
+
+.region-group.is-expanded .region-group-chevron {
+    transform: rotate(90deg);
+}
+
+.region-group-count {
+    margin-left: auto;
+    padding-left: 14px;
+    font-weight: 400;
+    font-size: 0.85em;
+    font-variant-numeric: tabular-nums;
+    color: var(--rp-muted);
+}
+
+.region-group-note {
+    font-weight: 400;
+    font-size: 0.85em;
+    color: var(--rp-muted);
+}
+
+.region-option {
+    width: 100%;
+    padding: 0.4rem 0.75rem 0.4rem 2.1rem;
+    background: none;
+    border: none;
+    color: var(--rp-text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.region-option:hover,
+.region-option.is-active {
+    background-color: var(--rp-hover);
+    color: var(--rp-heading);
+}
+
+.region-option.is-selected {
+    color: #7cb342;
+    font-weight: 600;
+}
+
+.region-empty {
+    padding: 0.75rem;
+    color: var(--rp-muted);
+    font-size: 0.9rem;
+    text-align: center;
+}

@@ -14,6 +14,63 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+# Each PIA region carries an ISO country code, used to group the region
+# dropdown by continent. Any code not listed here falls into "Other" so a
+# newly added country still appears in the list rather than disappearing.
+REGION_GROUPS = [
+    ('United States', {'US'}),
+    ('Europe', {
+        'AL', 'AD', 'AT', 'BY', 'BE', 'BA', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE',
+        'FI', 'FR', 'DE', 'GR', 'HU', 'IS', 'IE', 'IM', 'IT', 'LV', 'LI', 'LT',
+        'LU', 'MK', 'MT', 'MD', 'MC', 'ME', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS',
+        'SK', 'SI', 'ES', 'SE', 'CH', 'UA', 'GB', 'XK', 'GI', 'GG', 'JE', 'FO',
+    }),
+    ('Asia', {
+        'AM', 'AZ', 'BH', 'BD', 'BN', 'KH', 'CN', 'GE', 'HK', 'IN', 'ID', 'IL',
+        'JP', 'JO', 'KZ', 'KW', 'KG', 'LA', 'LB', 'MO', 'MY', 'MN', 'MM', 'NP',
+        'OM', 'PK', 'PH', 'QA', 'SA', 'SG', 'LK', 'SY', 'TW', 'TJ', 'TH', 'TR',
+        'AE', 'UZ', 'VN', 'YE', 'IQ', 'IR', 'KR',
+    }),
+    ('Oceania', {'AU', 'NZ', 'NC', 'PG', 'FJ'}),
+    ('North America', {'CA', 'GL'}),
+    ('Latin America', {
+        'AR', 'BO', 'BR', 'CL', 'CO', 'CR', 'CU', 'DO', 'EC', 'SV', 'GT', 'HN',
+        'JM', 'MX', 'NI', 'PA', 'PY', 'PE', 'PR', 'UY', 'VE', 'BS', 'BB', 'BZ',
+        'TT', 'GY', 'SR', 'AW',
+    }),
+    ('Africa', {
+        'DZ', 'AO', 'EG', 'GH', 'KE', 'MA', 'MU', 'NG', 'ZA', 'TN', 'UG', 'ZW',
+        'SN', 'CI', 'ET',
+    }),
+]
+
+OTHER_GROUP = 'Other'
+
+def group_regions(server_list):
+    """Arrange regions into continent groups for the dropdown.
+
+    Returns a list of groups in display order, each holding its regions sorted
+    by name along with whether that region supports port forwarding.
+    """
+    country_to_group = {
+        code: label for label, codes in REGION_GROUPS for code in codes
+    }
+    grouped = {label: [] for label, _ in REGION_GROUPS}
+    grouped[OTHER_GROUP] = []
+
+    for name, region in server_list.items():
+        label = country_to_group.get(region.get('country'), OTHER_GROUP)
+        grouped[label].append({
+            'name': name,
+            'port_forward': bool(region.get('port_forward')),
+        })
+
+    ordered = [label for label, _ in REGION_GROUPS] + [OTHER_GROUP]
+    return [
+        {'label': label, 'regions': sorted(grouped[label], key=lambda r: r['name'])}
+        for label in ordered if grouped[label]
+    ]
+
 def sanitize_region_for_filename(region_name):
     """
     Convert region name to filename-safe format
@@ -45,10 +102,10 @@ def get_regions():
     """Get available PIA regions for dropdown"""
     try:
         pia = piawg()
-        regions = list(pia.server_list.keys())
-        regions.sort()
-        logger.info(f"Retrieved {len(regions)} available regions")
-        return jsonify(regions)
+        groups = group_regions(pia.server_list)
+        logger.info(f"Retrieved {len(pia.server_list)} available regions "
+                    f"in {len(groups)} groups")
+        return jsonify(groups)
     except PIAError as e:
         logger.error(f"Failed to retrieve regions: {str(e)}")
         return jsonify({'error': str(e)}), 502

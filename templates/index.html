@@ -53,10 +53,23 @@
                             </div>
                             
                             <div class="mb-3">
-                                <label for="region" class="form-label">Region</label>
-                                <select class="form-control" id="region" name="region" required>
-                                    <option value="">Loading regions...</option>
-                                </select>
+                                <label for="regionToggle" class="form-label">Region</label>
+                                <div class="region-picker" id="regionPicker">
+                                    <button type="button" class="region-toggle is-placeholder" id="regionToggle"
+                                            aria-haspopup="listbox" aria-expanded="false">
+                                        <span id="regionToggleText">Loading regions...</span>
+                                        <span class="region-caret" aria-hidden="true">&#9662;</span>
+                                    </button>
+                                    <div class="region-panel" id="regionPanel" hidden>
+                                        <input type="text" class="region-filter" id="regionFilter"
+                                               placeholder="Type to filter regions..." autocomplete="off"
+                                               aria-label="Filter regions">
+                                        <div class="region-groups" id="regionGroups" role="listbox"
+                                             aria-label="PIA regions"></div>
+                                        <div class="region-empty" id="regionEmpty" hidden>No regions match</div>
+                                    </div>
+                                    <input type="hidden" id="region" name="region">
+                                </div>
                             </div>
                             
                             <div class="d-grid">
@@ -76,7 +89,7 @@
                         <!-- Help Section -->
                         <div class="help-section mt-4 p-3" style="border-radius: 8px; background-color: var(--help-bg); border: 1px solid var(--help-border);">
                             <p class="mb-2" style="font-size: 0.9rem; line-height: 1.5;">
-                                If your chosen region doesn't connect after import, the server may be temporarily busy. Try waiting a few minutes or generate a config for a different region.
+                                If a config doesn't connect, or stops working later on, generate a new one — each config is tied to a single PIA server.
                                 <a class="text-decoration-none" data-bs-toggle="collapse" href="#helpDetails" role="button" aria-expanded="false" aria-controls="helpDetails" style="white-space: nowrap;">
                                     [More details <span id="helpArrow">▼</span>]
                                 </a>
@@ -84,15 +97,17 @@
                             <div class="collapse" id="helpDetails">
                                 <hr style="margin: 0.75rem 0; opacity: 0.3;">
                                 <div style="font-size: 0.85rem; line-height: 1.6;">
-                                    <p class="mb-2"><strong>About PIA Server Availability</strong></p>
-                                    <p class="mb-2">PIA VPN servers occasionally experience high load or undergo maintenance. This is normal and doesn't mean your config file is invalid. The config generation always succeeds - connection issues happen when your WireGuard client attempts to connect to the server.</p>
-                                    <p class="mb-2"><strong>What to try:</strong></p>
+                                    <p class="mb-2"><strong>Why a config stops working</strong></p>
+                                    <p class="mb-2">Every config registers your device with one specific PIA server. PIA rebuild and rotate those servers regularly, and when yours is rebuilt its key changes and your registration is dropped — the tunnel then stops handshaking. Nothing is wrong with your account, your file, or this tool.</p>
+                                    <p class="mb-2"><strong>What to do:</strong></p>
                                     <ul class="mb-2" style="padding-left: 1.5rem;">
-                                        <li>Wait 5-10 minutes and try the same region again</li>
-                                        <li>Generate a config for a different region (US East is typically reliable)</li>
-                                        <li>Check if other regions in the same country are available</li>
+                                        <li>Generate a new config and re-import it. Each one gets a fresh key on a different server, so there's no need to wait first.</li>
+                                        <li>On Unraid, replace the tunnel under Settings → VPN Manager.</li>
+                                        <li>Staying on the same region is fine. If one region keeps going stale, try another.</li>
                                     </ul>
-                                    <p class="mb-0"><strong>Connection Maintenance:</strong> Once connected, the PersistentKeepalive setting (25 seconds) maintains your connection reliably, even through brief network interruptions.</p>
+                                    <p class="mb-2"><strong>Occasionally a brand-new config won't connect.</strong> PIA will sometimes accept the registration and hand back a config that never works. Generating again is the fix.</p>
+                                    <p class="mb-2"><strong>Port forwarding</strong> isn't available on any US region. If you need it for a download client, choose a region outside the US — the dropdown marks this.</p>
+                                    <p class="mb-0"><strong>Once connected,</strong> PersistentKeepalive (25 seconds) holds the connection through brief network interruptions.</p>
                                 </div>
                             </div>
                         </div>
@@ -160,21 +175,207 @@
             });
         }
 
-        // Load regions on page load
+        // Region picker: continent groups that expand one at a time, with a
+        // filter box. Port forwarding is noted on the group heading when a
+        // whole group lacks it, and on individual regions when a group is mixed.
+        const picker = document.getElementById('regionPicker');
+        const toggle = document.getElementById('regionToggle');
+        const toggleText = document.getElementById('regionToggleText');
+        const panel = document.getElementById('regionPanel');
+        const filter = document.getElementById('regionFilter');
+        const groupsEl = document.getElementById('regionGroups');
+        const emptyEl = document.getElementById('regionEmpty');
+        const regionInput = document.getElementById('region');
+
+        function buildGroups(groups) {
+            groupsEl.innerHTML = '';
+            groups.forEach(group => {
+                const noneForward = group.regions.every(r => !r.port_forward);
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'region-group';
+
+                const header = document.createElement('button');
+                header.type = 'button';
+                header.className = 'region-group-header';
+                header.innerHTML = '<span class="region-group-chevron" aria-hidden="true">&#9656;</span>';
+
+                const title = document.createElement('span');
+                title.textContent = group.label;
+                header.appendChild(title);
+
+                if (noneForward) {
+                    const note = document.createElement('span');
+                    note.className = 'region-group-note';
+                    note.textContent = '— no port forwarding';
+                    header.appendChild(note);
+                }
+
+                const count = document.createElement('span');
+                count.className = 'region-group-count';
+                count.textContent = group.regions.length;
+                header.appendChild(count);
+
+                const list = document.createElement('div');
+                list.className = 'region-list';
+                list.hidden = true;
+
+                group.regions.forEach(region => {
+                    const option = document.createElement('button');
+                    option.type = 'button';
+                    option.className = 'region-option';
+                    option.setAttribute('role', 'option');
+                    option.dataset.name = region.name;
+                    option.textContent = (!noneForward && !region.port_forward)
+                        ? region.name + ' (no port forwarding)'
+                        : region.name;
+                    option.addEventListener('click', () => selectRegion(region.name));
+                    list.appendChild(option);
+                });
+
+                header.addEventListener('click', () => {
+                    const willExpand = list.hidden;
+                    // Accordion: only one group open at a time.
+                    collapseAll();
+                    if (willExpand) {
+                        list.hidden = false;
+                        wrapper.classList.add('is-expanded');
+                    }
+                });
+
+                wrapper.appendChild(header);
+                wrapper.appendChild(list);
+                groupsEl.appendChild(wrapper);
+            });
+        }
+
+        function collapseAll() {
+            groupsEl.querySelectorAll('.region-group').forEach(g => {
+                g.classList.remove('is-expanded');
+                g.querySelector('.region-list').hidden = true;
+            });
+        }
+
+        function selectRegion(name) {
+            regionInput.value = name;
+            toggleText.textContent = name;
+            toggle.classList.remove('is-placeholder');
+            groupsEl.querySelectorAll('.region-option').forEach(o => {
+                o.classList.toggle('is-selected', o.dataset.name === name);
+            });
+            closePanel();
+        }
+
+        function openPanel() {
+            panel.hidden = false;
+            picker.classList.add('is-open');
+            toggle.setAttribute('aria-expanded', 'true');
+            filter.focus();
+        }
+
+        function closePanel() {
+            panel.hidden = true;
+            picker.classList.remove('is-open');
+            toggle.setAttribute('aria-expanded', 'false');
+            filter.value = '';
+            applyFilter('');
+        }
+
+        function applyFilter(term) {
+            const query = term.trim().toLowerCase();
+            let anyVisible = false;
+
+            groupsEl.querySelectorAll('.region-group').forEach(group => {
+                const list = group.querySelector('.region-list');
+                let matches = 0;
+
+                group.querySelectorAll('.region-option').forEach(option => {
+                    const hit = option.dataset.name.toLowerCase().includes(query);
+                    option.hidden = !hit;
+                    if (hit) matches++;
+                });
+
+                group.hidden = matches === 0;
+                if (matches > 0) anyVisible = true;
+
+                group.querySelector('.region-group-count').textContent = matches;
+
+                // While filtering, matching groups open so results are visible.
+                if (query) {
+                    list.hidden = matches === 0;
+                    group.classList.toggle('is-expanded', matches > 0);
+                } else {
+                    list.hidden = true;
+                    group.classList.remove('is-expanded');
+                }
+            });
+
+            emptyEl.hidden = anyVisible;
+            clearActive();
+        }
+
+        function visibleOptions() {
+            return Array.from(groupsEl.querySelectorAll('.region-option'))
+                .filter(o => !o.hidden && !o.closest('.region-group').hidden
+                             && !o.closest('.region-list').hidden);
+        }
+
+        function clearActive() {
+            groupsEl.querySelectorAll('.region-option.is-active')
+                .forEach(o => o.classList.remove('is-active'));
+        }
+
+        function moveActive(step) {
+            const options = visibleOptions();
+            if (!options.length) return;
+            const current = options.findIndex(o => o.classList.contains('is-active'));
+            const next = current < 0
+                ? (step > 0 ? 0 : options.length - 1)
+                : (current + step + options.length) % options.length;
+            clearActive();
+            options[next].classList.add('is-active');
+            options[next].scrollIntoView({ block: 'nearest' });
+        }
+
+        toggle.addEventListener('click', () => {
+            panel.hidden ? openPanel() : closePanel();
+        });
+
+        filter.addEventListener('input', () => applyFilter(filter.value));
+
+        picker.addEventListener('keydown', function(e) {
+            if (panel.hidden) return;
+            if (e.key === 'Escape') {
+                closePanel();
+                toggle.focus();
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                moveActive(1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                moveActive(-1);
+            } else if (e.key === 'Enter') {
+                const active = groupsEl.querySelector('.region-option.is-active');
+                if (active) {
+                    e.preventDefault();
+                    selectRegion(active.dataset.name);
+                    toggle.focus();
+                }
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!panel.hidden && !picker.contains(e.target)) closePanel();
+        });
+
         fetch('/regions')
             .then(response => response.json())
-            .then(regions => {
-                const select = document.getElementById('region');
-                select.innerHTML = '<option value="">Select a region...</option>';
-                regions.forEach(region => {
-                    const option = document.createElement('option');
-                    option.value = region;
-                    option.textContent = region;
-                    select.appendChild(option);
-                });
+            .then(groups => {
+                buildGroups(groups);
+                toggleText.textContent = 'Select a region...';
             })
             .catch(error => {
-                document.getElementById('region').innerHTML = '<option value="">Error loading regions</option>';
+                toggleText.textContent = 'Error loading regions';
             });
 
         // Handle form submission
@@ -190,7 +391,15 @@
             // Reset alerts
             errorDiv.classList.add('d-none');
             successDiv.classList.add('d-none');
-            
+
+            // The region picker is a custom control, so it is validated here
+            // rather than by the browser.
+            if (!document.getElementById('region').value) {
+                errorDiv.textContent = 'Please select a region';
+                errorDiv.classList.remove('d-none');
+                return;
+            }
+
             // Show loading state
             btn.disabled = true;
             btnText.textContent = 'Generating...';
